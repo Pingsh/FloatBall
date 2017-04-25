@@ -16,6 +16,7 @@ import java.lang.reflect.Field;
 
 /**
  * Created by wangxiandeng on 2016/11/25.
+ * Changed by pingsh on 2017/4/25
  */
 
 public class FloatBallView extends LinearLayout {
@@ -244,8 +245,10 @@ public class FloatBallView extends LinearLayout {
     private void doUp() {
         switch (mCurrentMode) {
             case MODE_LEFT:
+                AccessibilityUtil.doLeft(mService);
+                break;
             case MODE_RIGHT:
-                AccessibilityUtil.doLeftOrRight(mService);
+                AccessibilityUtil.doRight(mService);
                 break;
             case MODE_DOWN:
                 AccessibilityUtil.doPullDown(mService);

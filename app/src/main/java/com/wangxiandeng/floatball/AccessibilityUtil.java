@@ -1,43 +1,43 @@
 package com.wangxiandeng.floatball;
 
 import android.accessibilityservice.AccessibilityService;
+import android.app.ActivityManager;
+import android.app.usage.UsageStats;
+import android.app.usage.UsageStatsManager;
 import android.content.Context;
+import android.content.Intent;
 import android.provider.Settings;
+import android.util.Log;
+import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 /**
  * Created by wangxiandeng on 2016/11/25.
+ * Changed by pingsh on 2017/4/25
  */
 
 public class AccessibilityUtil {
-    /**
-     * µ¥»÷·µ»Ø¹¦ÄÜ
-     * @param service
-     */
+    private static final String TAG = "åº”ç”¨";
+
     public static void doBack(AccessibilityService service) {
         service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);
     }
 
-    /**
-     * ÏÂÀ­´ò¿ªÍ¨ÖªÀ¸
-     * @param service
-     */
+
     public static void doPullDown(AccessibilityService service) {
         service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS);
     }
 
-    /**
-     * ÉÏÀ­·µ»Ø×ÀÃæ
-     * @param service
-     */
     public static void doPullUp(AccessibilityService service) {
         service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME);
     }
 
-    /**
-     * ×óÓÒ»¬¶¯´ò¿ª¶àÈÎÎñ
-     * @param service
-     */
-    public static void doLeftOrRight(AccessibilityService service) {
+    public static void doRight(AccessibilityService service) {
         service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS);
     }
 
@@ -62,5 +62,62 @@ public class AccessibilityUtil {
     }
 
 
+    public static void doLeft(AccessibilityService service) {
+        String currentApp = "NULL";
+        String secondApp = "NULL";
+        String thirdApp = "NULL";
 
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            UsageStatsManager usm = (UsageStatsManager) service.getSystemService(Context.USAGE_STATS_SERVICE);
+            long time = System.currentTimeMillis();
+            List<UsageStats> appList = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, time - 1000 * 1000, time);
+            for (int i = 0; i < appList.size(); i++) {
+                Log.e(TAG, "all app: " + appList.get(i).getPackageName());
+            }
+            if (appList != null && appList.size() > 0) {
+                SortedMap<Long, UsageStats> mySortedMap = new TreeMap<Long, UsageStats>();
+                for (UsageStats usageStats : appList) {
+                    mySortedMap.put(usageStats.getLastTimeUsed(), usageStats);
+                }
+                if (mySortedMap != null && !mySortedMap.isEmpty()) {
+                    currentApp = mySortedMap.get(mySortedMap.lastKey()).getPackageName();
+                    List<Long> timeList = new ArrayList<>();
+                    for (Map.Entry<Long, UsageStats> entry : mySortedMap.entrySet()) {
+                        Log.e(TAG, "Key = " + entry.getKey() + ", Value = " + entry.getValue().getPackageName());
+                        //å¦‚æœæœ€è¿‘çš„è¿›ç¨‹æ˜¯æ¡Œé¢,åˆ™åˆ‡æ¢åˆ°æ¡Œé¢çš„å‰ä¸€ä¸ªè¿›ç¨‹
+                        timeList.add(entry.getKey());
+                        if (timeList.size() == mySortedMap.size() - 2) {
+                            thirdApp = entry.getValue().getPackageName();
+                            Log.e(TAG, "thirdApp = " + thirdApp);
+                        }
+
+                        if (timeList.size() == mySortedMap.size() - 1) {
+                            secondApp = entry.getValue().getPackageName();
+                            Log.e(TAG, "secondAPP = " + entry.getValue().getPackageName());
+                        }
+
+                    }
+
+                    if (currentApp.contains("launcher")) {
+                        Toast.makeText(service, "å½“å‰å·²æ˜¯æ¡Œé¢", Toast.LENGTH_SHORT).show();
+                        service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME);
+                    } else if (secondApp.contains("launcher")) {
+                        Intent intent_third = service.getPackageManager().getLaunchIntentForPackage(thirdApp);
+                        service.startActivity(intent_third);
+                    } else {
+                        Intent intent_second = service.getPackageManager().getLaunchIntentForPackage(secondApp);
+                        service.startActivity(intent_second);
+                    }
+
+                }
+            }
+        } else {
+            ActivityManager am = (ActivityManager) service.getSystemService(Context.ACTIVITY_SERVICE);
+            List<ActivityManager.RunningAppProcessInfo> tasks = am.getRunningAppProcesses();
+            currentApp = tasks.get(0).processName;
+        }
+
+        Log.e(TAG, "Current App in foreground is: " + currentApp);
+
+    }
 }
